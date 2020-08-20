@@ -2,9 +2,7 @@
 
 ## A nodejs hot module reload 
 
-### Example
-
-#### First Step
+### First Step
 
 Add in the first line of code
 
@@ -19,18 +17,18 @@ hot.run();
 
 ```
 
-#### Second Step
+### Second Step
 
 By default, if a module change is detected again, the modified module will be reloaded in turn, and the parent module that references this module will also be reloaded.
 
 
-##### Life cycle
+#### Life cycle
 
 ```js
 // preload ---> preend ---> accept ---> postend
 ```
 
-##### preload
+#### preload
 
 Triggered before reloading the module, the event will be dispatched to all parent modules that reference this module
 
