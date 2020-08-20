@@ -9,7 +9,7 @@
     "removeComments": true,
     "esModuleInterop":true,
     "preserveConstEnums": true,
-    "sourceMap": true,
+    "sourceMap": false,
     "emitDecoratorMetadata": true,
     "experimentalDecorators":true,
     "outDir": "./dist/",
