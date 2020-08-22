@@ -51,6 +51,8 @@ hot
 
 ##### accept
 
+Accept child module change,
+
 If the change module defines the `accept` function, the parent module will stop reloading.
 
 

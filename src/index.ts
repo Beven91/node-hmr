@@ -137,20 +137,16 @@ class HotReload {
       const index = module.children.indexOf(now);
       index > -1 ? module.children.splice(index, 1) : undefined;
       // 执行hooks.accept
-      if (hot.hooks.accept) {
-        hot.hooks.accept(now, old);
-      } else {
-        const reasons = hot.reasons;
-        reasons.forEach((reason) => {
-          if (reason.hooks.accept) {
-            // 如果父模块定义了accept 
-            reason.hooks.accept(now, old);
-          } else if (require.cache[reason.id] !== require.main) {
-            // 如果父模块没有定义accept 则重新载入父模块
-            this.reload(reason.id, reloadeds);
-          }
-        })
-      }
+      const reasons = hot.reasons;
+      reasons.forEach((reason) => {
+        if (reason.hooks.accept) {
+          // 如果父模块定义了accept 
+          reason.hooks.accept(now, old);
+        } else if (require.cache[reason.id] !== require.main) {
+          // 如果父模块没有定义accept 则重新载入父模块
+          this.reload(reason.id, reloadeds);
+        }
+      })
       hot.invokeHook('postend', {}, now, old);
       // 还原父依赖
       if (old.parent) {
