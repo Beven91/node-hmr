@@ -136,20 +136,21 @@ class HotReload {
       // 从子依赖中删除掉刚刚引入的模块，防止出现错误的依赖关系
       const index = module.children.indexOf(now);
       index > -1 ? module.children.splice(index, 1) : undefined;
-      // if (hot.hooks.accept) {
-      //   hot.hooks.accept(now, old);
-      // }
       // 执行hooks.accept
-      const reasons = hot.reasons;
-      reasons.forEach((reason) => {
-        if (reason.hooks.accept) {
-          // 如果父模块定义了accept 
-          reason.hooks.accept(now, old);
-        } else if (require.cache[reason.id] !== require.main) {
-          // 如果父模块没有定义accept 则重新载入父模块
-          this.reload(reason.id, reloadeds);
-        }
-      })
+      if (hot.hooks.accept) {
+        hot.hooks.accept(now, old);
+      } else {
+        const reasons = hot.reasons;
+        reasons.forEach((reason) => {
+          if (reason.hooks.accept) {
+            // 如果父模块定义了accept 
+            reason.hooks.accept(now, old);
+          } else if (require.cache[reason.id] !== require.main) {
+            // 如果父模块没有定义accept 则重新载入父模块
+            this.reload(reason.id, reloadeds);
+          }
+        })
+      }
       hot.invokeHook('postend', {}, now, old);
       // 还原父依赖
       if (old.parent) {
@@ -214,8 +215,8 @@ class HotReload {
   /**
    * 监听改变
    */
-  run(options: HotOptions) {
-    this.options = options;
+  run(options?: HotOptions) {
+    this.options = options || {} as HotOptions;
     this.reloadTimeout = options.reloadTimeout || 300;
     this.hotWrap();
     // 监听文件改动
