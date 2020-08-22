@@ -212,7 +212,8 @@ class HotReload {
    * 监听改变
    */
   run(options?: HotOptions) {
-    this.options = options || {} as HotOptions;
+    options = options || {} as HotOptions;
+    this.options = options;
     this.reloadTimeout = options.reloadTimeout || 300;
     this.hotWrap();
     // 监听文件改动

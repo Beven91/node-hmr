@@ -87,20 +87,15 @@ var HotReload = (function () {
             var now_1 = require.cache[id];
             var index = module.children.indexOf(now_1);
             index > -1 ? module.children.splice(index, 1) : undefined;
-            if (hot.hooks.accept) {
-                hot.hooks.accept(now_1, old);
-            }
-            else {
-                var reasons = hot.reasons;
-                reasons.forEach(function (reason) {
-                    if (reason.hooks.accept) {
-                        reason.hooks.accept(now_1, old);
-                    }
-                    else if (require.cache[reason.id] !== require.main) {
-                        _this.reload(reason.id, reloadeds);
-                    }
-                });
-            }
+            var reasons = hot.reasons;
+            reasons.forEach(function (reason) {
+                if (reason.hooks.accept) {
+                    reason.hooks.accept(now_1, old);
+                }
+                else if (require.cache[reason.id] !== require.main) {
+                    _this.reload(reason.id, reloadeds);
+                }
+            });
             hot.invokeHook('postend', {}, now_1, old);
             if (old.parent) {
                 now_1.parent = require.cache[old.parent.id];
