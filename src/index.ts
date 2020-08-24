@@ -15,7 +15,7 @@ export declare class HotOptions {
   /**
    * 热更新监听目录
    */
-  cwd: string
+  cwd: string | Array<string>
   /**
    * 热更新执行频率，单位：毫秒
    */
@@ -62,6 +62,9 @@ class HotReload {
    * 监听文件改动
    */
   watch(cwd) {
+    if (!cwd) {
+      return;
+    }
     const runtime = { timerId: null }
     fs.watch(cwd, { recursive: true }, (type, filename) => {
       if (!/node_module/.test(filename) && /\.(ts|js)$/.test(filename)) {
@@ -216,8 +219,9 @@ class HotReload {
     this.options = options;
     this.reloadTimeout = options.reloadTimeout || 300;
     this.hotWrap();
-    // 监听文件改动
-    this.watch(options.cwd || path.resolve(''));
+    const cwd = options.cwd || path.resolve('');
+    const dirs = cwd instanceof Array ? cwd : [cwd];
+    dirs.forEach((item) => this.watch(item))
   }
 }
 

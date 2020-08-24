@@ -13,7 +13,8 @@ import hot from 'nodejs-hmr';
 hot.run();
 
 // or 
-// hot.run({ cwd:path.resolve('xx/xx') })
+// hot.run({ cwd: path.resolve('xx/xx') })
+// hot.run({ cwd: [ path.resolve('xx/xx'),... ] })
 
 ```
 

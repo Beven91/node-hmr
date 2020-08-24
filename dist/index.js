@@ -150,7 +150,8 @@ var HotReload = (function () {
         });
     };
     HotReload.prototype.run = function (options) {
-        this.options = options || {};
+        options = options || {};
+        this.options = options;
         this.reloadTimeout = options.reloadTimeout || 300;
         this.hotWrap();
         this.watch(options.cwd || path_1.default.resolve(''));
