@@ -65,12 +65,12 @@ class HotReload {
     if (!cwd) {
       return;
     }
-    const runtime = { timerId: null }
+    const runtime = {}
     fs.watch(cwd, { recursive: true }, (type, filename) => {
       if (!/node_module/.test(filename) && /\.(ts|js)$/.test(filename)) {
-        const id = path.join(cwd, filename).replace(/^[A-Z]:/, (a) => a.toLowerCase());;
-        clearTimeout(runtime.timerId);
-        runtime.timerId = setTimeout(() => this.hotWatch(type, id), this.reloadTimeout);
+        const id = path.join(cwd, filename).replace(/^[A-Z]:/, (a) => a.toUpperCase());
+        clearTimeout(runtime[type]);
+        runtime[type] = setTimeout(() => this.hotWatch(type, id), this.reloadTimeout);
       }
     });
   }
@@ -89,11 +89,19 @@ class HotReload {
     }
   }
 
+  renderId(id) {
+    if (process.platform === 'win32') {
+      return require.cache[id] ? id : id.replace(/^[A-Z]:/, (a) => a.toLowerCase());
+    }
+    return id;
+  }
+
   /**
    * 文件改动时，处理热更新
    * @param id 
    */
   handleReload(id) {
+    id = this.renderId(id);
     if (!require.cache[id]) {
       // 如果模块已删除，则直接掠过
       return;

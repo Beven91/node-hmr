@@ -30,6 +30,9 @@ var HotReload = (function () {
     };
     HotReload.prototype.watch = function (cwd) {
         var _this = this;
+        if (!cwd) {
+            return;
+        }
         var runtime = { timerId: null };
         fs_1.default.watch(cwd, { recursive: true }, function (type, filename) {
             if (!/node_module/.test(filename) && /\.(ts|js)$/.test(filename)) {
@@ -150,11 +153,14 @@ var HotReload = (function () {
         });
     };
     HotReload.prototype.run = function (options) {
+        var _this = this;
         options = options || {};
         this.options = options;
         this.reloadTimeout = options.reloadTimeout || 300;
         this.hotWrap();
-        this.watch(options.cwd || path_1.default.resolve(''));
+        var cwd = options.cwd || path_1.default.resolve('');
+        var dirs = cwd instanceof Array ? cwd : [cwd];
+        dirs.forEach(function (item) { return _this.watch(item); });
     };
     return HotReload;
 }());
