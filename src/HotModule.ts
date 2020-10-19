@@ -2,30 +2,12 @@
  * @module HotModule
  * 热更新模块
  */
+import Hook from './Hook';
 
 const includes = [
   /node_modules\/node-web-mvc/,
   /^((?!node_modules).)*$/i,
 ]
-
-declare class Hooks {
-  /**
-   * 在更新后执行
-   */
-  accept?: Function
-  /**
-   * 在执行accept前执行
-   */
-  pre?: Function
-  /**
-   * 在执行完pre在accept之前执行
-   */
-  preend?: Function
-  /**
-   * 再热更新完毕后
-   */
-  postend?: Function
-}
 
 export default class HotModule {
 
@@ -45,7 +27,24 @@ export default class HotModule {
   /**
    * 当前接受的accept
    */
-  public hooks: Hooks
+  public hooks = {
+    /**
+  * 在更新后执行
+  */
+    accept: new Hook(),
+    /**
+     * 在执行accept前执行
+     */
+    pre: new Hook(),
+    /**
+     * 在执行完pre在accept之前执行
+     */
+    preend: new Hook(),
+    /**
+     * 再热更新完毕后
+     */
+    postend: new Hook()
+  }
 
   /**
    * 原始模块的exports对象
@@ -73,7 +72,6 @@ export default class HotModule {
   constructor(id) {
     this.id = id;
     this.reasons = [];
-    this.hooks = {};
   }
 
   static isInclude(filename) {
@@ -85,7 +83,7 @@ export default class HotModule {
    * 判断当前执行，是否是从热更新触发
    */
   accept(handler: (now, old) => void) {
-    this.hooks.accept = handler;
+    this.hooks.accept.add(handler);
     return this;
   }
 
@@ -93,7 +91,7 @@ export default class HotModule {
    * 监听预更新，在热更新前执行
    */
   preload(handler: (old) => void) {
-    this.hooks.pre = handler;
+    this.hooks.pre.add(handler);
     return this;
   }
 
@@ -101,7 +99,7 @@ export default class HotModule {
    * 在pre钩子执行后执行
    */
   preend(handler: (old) => void) {
-    this.hooks.preend = handler;
+    this.hooks.preend.add(handler);
     return this;
   }
 
@@ -110,7 +108,7 @@ export default class HotModule {
    * @param params 
    */
   postend(handler: (now, old) => void) {
-    this.hooks.postend = handler;
+    this.hooks.postend.add(handler);
   }
 
   /**
@@ -121,7 +119,8 @@ export default class HotModule {
       // 用于防止死循环
       return;
     } else if (this.hooks[name]) {
-      this.hooks[name](...params);
+      const hook = this.hooks[name] as Hook;
+      hook.invoke(...params);
     }
     // 标记成已执行
     invokes[this.id] = true;

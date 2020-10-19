@@ -33,13 +33,12 @@ var HotReload = (function () {
         if (!cwd) {
             return;
         }
-        var runtime = { timerId: null };
+        var runtime = {};
         fs_1.default.watch(cwd, { recursive: true }, function (type, filename) {
             if (!/node_module/.test(filename) && /\.(ts|js)$/.test(filename)) {
-                var id_1 = path_1.default.join(cwd, filename).replace(/^[A-Z]:/, function (a) { return a.toLowerCase(); });
-                ;
-                clearTimeout(runtime.timerId);
-                runtime.timerId = setTimeout(function () { return _this.hotWatch(type, id_1); }, _this.reloadTimeout);
+                var id_1 = path_1.default.join(cwd, filename).replace(/^[A-Z]:/, function (a) { return a.toUpperCase(); });
+                clearTimeout(runtime[type]);
+                runtime[type] = setTimeout(function () { return _this.hotWatch(type, id_1); }, _this.reloadTimeout);
             }
         });
     };
@@ -56,7 +55,14 @@ var HotReload = (function () {
                 this.handleReload(filename);
         }
     };
+    HotReload.prototype.renderId = function (id) {
+        if (process.platform === 'win32') {
+            return require.cache[id] ? id : id.replace(/^[A-Z]:/, function (a) { return a.toLowerCase(); });
+        }
+        return id;
+    };
     HotReload.prototype.handleReload = function (id) {
+        id = this.renderId(id);
         if (!require.cache[id]) {
             return;
         }

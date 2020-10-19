@@ -6,6 +6,7 @@ import fs from 'fs';
 import HotModule from './HotModule';
 import Module from 'module';
 import ListReplacement from './ListReplacement';
+import createHotUpdater from './updater/index';
 
 export declare class NodeHotModule extends Module {
   hot: HotModule
@@ -25,6 +26,13 @@ export declare class HotOptions {
 class HotReload {
 
   ListReplacement = ListReplacement
+
+  /**
+   * 创建一个数据热更新器
+   */
+  createHotUpdater<T>(data, now, old) {
+    return createHotUpdater<T>(data, now, old);
+  }
 
   /**
    * 热更新配置
@@ -152,7 +160,7 @@ class HotReload {
       reasons.forEach((reason) => {
         if (reason.hooks.accept) {
           // 如果父模块定义了accept 
-          reason.hooks.accept(now, old);
+          reason.hooks.accept.invoke(now, old);
         } else if (require.cache[reason.id] !== require.main) {
           // 如果父模块没有定义accept 则重新载入父模块
           this.reload(reason.id, reloadeds);
