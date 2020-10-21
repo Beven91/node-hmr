@@ -85,3 +85,37 @@ hot
 
 ```
 
+### Updater
+
+Currently, `Array`, `Map`, and `Object` types can be updated through `hot.createHotUpdater`.
+
+```js
+
+import Color from './color';
+import Size from './size';
+
+const registrations = new Array<XX>();
+
+registrations.push(new Color());
+registrations.push(new Size());
+
+ hot
+  .create(module)
+  .accept((newModule,oldModule)=>{
+    //When the color.js file changes, you can specify the update replacement in the following ways
+    hot
+      .createHotUpdater(registrations,newModule,oldModule)
+      .hotNeed((item,oldCtor)=> item instanceof oldCtor)
+      // set replacement instance constructor
+      .creator((ctor)=>{
+        return new ctor();
+      })
+      // do update
+      .update();
+  })
+
+```
+
+
+
+

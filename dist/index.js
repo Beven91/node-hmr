@@ -14,12 +14,16 @@ var path_1 = __importDefault(require("path"));
 var fs_1 = __importDefault(require("fs"));
 var HotModule_1 = __importDefault(require("./HotModule"));
 var module_1 = __importDefault(require("module"));
-var ListReplacement_1 = __importDefault(require("./ListReplacement"));
+var ListReplacement_1 = __importDefault(require("./updater/ListReplacement"));
+var index_1 = __importDefault(require("./updater/index"));
 var HotReload = (function () {
     function HotReload() {
         this.ListReplacement = ListReplacement_1.default;
         this.hotModules = new Map();
     }
+    HotReload.prototype.createHotUpdater = function (data, now, old) {
+        return index_1.default(data, now, old);
+    };
     HotReload.prototype.create = function (mod) {
         var id = mod.filename || mod.id;
         if (!this.hotModules.get(id)) {
@@ -98,10 +102,10 @@ var HotReload = (function () {
             index > -1 ? module.children.splice(index, 1) : undefined;
             var reasons = hot.reasons;
             reasons.forEach(function (reason) {
-                if (reason.hooks.accept) {
-                    reason.hooks.accept(now_1, old);
+                if (reason.hooks.accept.count > 0) {
+                    reason.hooks.accept.invoke(now_1, old);
                 }
-                else if (require.cache[reason.id] !== require.main) {
+                else if (require.cache[reason.id] !== require.main && !reason.hasAnyHooks) {
                     _this.reload(reason.id, reloadeds);
                 }
             });

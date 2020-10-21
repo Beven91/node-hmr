@@ -6,16 +6,25 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
             r[k] = a[j];
     return r;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+var Hook_1 = __importDefault(require("./Hook"));
 var includes = [
     /node_modules\/node-web-mvc/,
     /^((?!node_modules).)*$/i,
 ];
 var HotModule = (function () {
     function HotModule(id) {
+        this.hooks = {
+            accept: new Hook_1.default(),
+            pre: new Hook_1.default(),
+            preend: new Hook_1.default(),
+            postend: new Hook_1.default()
+        };
         this.id = id;
         this.reasons = [];
-        this.hooks = {};
     }
     HotModule.setInclude = function (items) {
         (items || []).forEach(function (item) {
@@ -35,23 +44,30 @@ var HotModule = (function () {
         filename = filename.replace(/\\/g, '/');
         return !!includes.find(function (reg) { return reg.test(filename); });
     };
+    Object.defineProperty(HotModule.prototype, "hasAnyHooks", {
+        get: function () {
+            var _a = this.hooks, accept = _a.accept, pre = _a.pre, preend = _a.preend, postend = _a.postend;
+            return accept.count > 0 || pre.count > 0 || preend.count > 0 || postend.count > 0;
+        },
+        enumerable: false,
+        configurable: true
+    });
     HotModule.prototype.accept = function (handler) {
-        this.hooks.accept = handler;
+        this.hooks.accept.add(handler);
         return this;
     };
     HotModule.prototype.preload = function (handler) {
-        this.hooks.pre = handler;
+        this.hooks.pre.add(handler);
         return this;
     };
     HotModule.prototype.preend = function (handler) {
-        this.hooks.preend = handler;
+        this.hooks.preend.add(handler);
         return this;
     };
     HotModule.prototype.postend = function (handler) {
-        this.hooks.postend = handler;
+        this.hooks.postend.add(handler);
     };
     HotModule.prototype.invokeHook = function (name, invokes) {
-        var _a;
         var params = [];
         for (var _i = 2; _i < arguments.length; _i++) {
             params[_i - 2] = arguments[_i];
@@ -60,7 +76,8 @@ var HotModule = (function () {
             return;
         }
         else if (this.hooks[name]) {
-            (_a = this.hooks)[name].apply(_a, params);
+            var hook = this.hooks[name];
+            hook.invoke.apply(hook, params);
         }
         invokes[this.id] = true;
         try {
