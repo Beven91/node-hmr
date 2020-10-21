@@ -5,7 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import HotModule from './HotModule';
 import Module from 'module';
-import ListReplacement from './ListReplacement';
+import ListReplacement from './updater/ListReplacement';
 import createHotUpdater from './updater/index';
 
 export declare class NodeHotModule extends Module {
@@ -158,14 +158,14 @@ class HotReload {
       // 执行hooks.accept
       const reasons = hot.reasons;
       reasons.forEach((reason) => {
-        if (reason.hooks.accept) {
+        if (reason.hooks.accept.count > 0) {
           // 如果父模块定义了accept 
           reason.hooks.accept.invoke(now, old);
-        } else if (require.cache[reason.id] !== require.main) {
+        } else if (require.cache[reason.id] !== require.main && !reason.hasAnyHooks) {
           // 如果父模块没有定义accept 则重新载入父模块
           this.reload(reason.id, reloadeds);
         }
-      })
+      });
       hot.invokeHook('postend', {}, now, old);
       // 还原父依赖
       if (old.parent) {

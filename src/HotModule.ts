@@ -80,6 +80,14 @@ export default class HotModule {
   }
 
   /**
+   * 判断，是否有任意钩子监听
+   */
+  get hasAnyHooks() {
+    const { accept, pre, preend, postend } = this.hooks;
+    return accept.count > 0 || pre.count > 0 || preend.count > 0 || postend.count > 0;
+  }
+
+  /**
    * 判断当前执行，是否是从热更新触发
    */
   accept(handler: (now, old) => void) {
