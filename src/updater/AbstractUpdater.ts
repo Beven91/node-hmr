@@ -3,13 +3,13 @@
  * @description 数据热更新抽象类
  */
 
-export default abstract class AbstractUpdater<T,D> {
+export default abstract class AbstractUpdater<T, D> {
 
   // 旧的模块
-  private old: any
+  protected old: any
 
   // 新的模块
-  private now: any
+  protected now: any
 
   // 需要进行热更新替换的数据
   protected data: D
@@ -21,7 +21,7 @@ export default abstract class AbstractUpdater<T,D> {
   protected useFn = (m) => m.exports.default || m.exports;
 
   // 判断指定项，是否需要热更新替换。
-  protected needHotFn = (m, ctor) => m instanceof ctor;
+  protected needHotFn = (m: T, ctor) => m instanceof ctor;
 
   /**
    * 构造一个更新器
@@ -35,7 +35,7 @@ export default abstract class AbstractUpdater<T,D> {
   /**
    * 设置:是否需要热更新的比较函数
    */
-  needHot(handler: (m, ctor) => boolean) {
+  needHot(handler: (m: T, ctor) => boolean) {
     this.needHotFn = handler;
     return this;
   }
@@ -72,10 +72,22 @@ export default abstract class AbstractUpdater<T,D> {
     this.cleanUpdate(ctor);
   }
 
-  abstract internalUpdate(ctor, newCtor);
+  /**
+   * 清除当前传入的数据中，热更新模块旧的实例数据。
+   */
+  remove() {
+    const ctor = this.useFn(this.old);
+    if (typeof ctor !== 'function') {
+      return;
+    }
+    this.cleanUpdate(ctor)
+  }
+
+  // 用于子类实现具体热更新替换
+  protected abstract internalUpdate(ctor, newCtor);
 
   /**
    * 执行清理操作
    */
-  abstract cleanUpdate(oldCtor);
+  protected abstract cleanUpdate(oldCtor);
 }
