@@ -32,6 +32,13 @@ var AbstractUpdater = (function () {
         this.internalUpdate(ctor, newCtor);
         this.cleanUpdate(ctor);
     };
+    AbstractUpdater.prototype.remove = function () {
+        var ctor = this.useFn(this.old);
+        if (typeof ctor !== 'function') {
+            return;
+        }
+        this.cleanUpdate(ctor);
+    };
     return AbstractUpdater;
 }());
 exports.default = AbstractUpdater;
