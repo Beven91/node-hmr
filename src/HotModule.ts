@@ -121,6 +121,7 @@ export default class HotModule {
       const hook = this.hooks[name] as Hook;
       hook.clean();
     });
+    return this;
   }
 
   /**

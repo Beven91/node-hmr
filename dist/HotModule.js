@@ -64,8 +64,12 @@ var HotModule = (function () {
         this.hooks.preend.add(handler);
         return this;
     };
-    HotModule.prototype.clean = function (types) {
+    HotModule.prototype.clean = function () {
         var _this = this;
+        var types = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            types[_i] = arguments[_i];
+        }
         types = types || ['accept', 'pre', 'preend', 'postend'];
         types.forEach(function (name) {
             var hook = _this.hooks[name];
