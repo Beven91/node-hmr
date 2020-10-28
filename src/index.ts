@@ -164,6 +164,9 @@ class HotReload {
         } else if (require.cache[reason.id] !== require.main && !reason.hasAnyHooks) {
           // 如果父模块没有定义accept 则重新载入父模块
           this.reload(reason.id, reloadeds);
+        } else if (require.cache[reason.id] === require.main) {
+          // 如果时主模块,且主模块没有定制accept 这里需要派发至主模块的所有子模块
+          // reason.invokeHook('accept', now, old);
         }
       });
       hot.invokeHook('postend', {}, now, old);

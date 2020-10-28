@@ -112,6 +112,18 @@ export default class HotModule {
   }
 
   /**
+   * 清除hooks
+   * @param types 要清除的hooks类型 
+   */
+  clean(types: Array<string>) {
+    types = types || ['accept', 'pre', 'preend', 'postend'];
+    types.forEach((name) => {
+      const hook = this.hooks[name] as Hook;
+      hook.clean();
+    });
+  }
+
+  /**
    * 热更新完毕
    * @param params 
    */

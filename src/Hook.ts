@@ -18,4 +18,8 @@ export default class Hook {
   invoke(...args) {
     this.handlers.forEach((handler) => handler(...args));
   }
+
+  clean(){
+    this.handlers.length = 0;
+  }
 }
