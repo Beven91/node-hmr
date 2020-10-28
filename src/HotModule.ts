@@ -115,7 +115,7 @@ export default class HotModule {
    * 清除hooks
    * @param types 要清除的hooks类型 
    */
-  clean(types: Array<string>) {
+  clean(...types: Array<string>) {
     types = types || ['accept', 'pre', 'preend', 'postend'];
     types.forEach((name) => {
       const hook = this.hooks[name] as Hook;

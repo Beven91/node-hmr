@@ -21,6 +21,9 @@ var Hook = (function () {
         }
         this.handlers.forEach(function (handler) { return handler.apply(void 0, args); });
     };
+    Hook.prototype.clean = function () {
+        this.handlers.length = 0;
+    };
     return Hook;
 }());
 exports.default = Hook;

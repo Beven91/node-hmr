@@ -85,6 +85,22 @@ hot
 
 ```
 
+##### clean
+
+```js
+
+import hot from 'nodejs-hmr';
+
+hot
+  .create(module)
+  // clean hook listener
+  .clean('postend','..')
+  .postend((newModule,oldModule)=>{
+    // do somehting
+  })
+
+```
+
 ### Updater
 
 Currently, `Array`, `Map`, and `Object` types can be updated through `hot.createHotUpdater`.

@@ -108,6 +108,8 @@ var HotReload = (function () {
                 else if (require.cache[reason.id] !== require.main && !reason.hasAnyHooks) {
                     _this.reload(reason.id, reloadeds);
                 }
+                else if (require.cache[reason.id] === require.main) {
+                }
             });
             hot.invokeHook('postend', {}, now_1, old);
             if (old.parent) {

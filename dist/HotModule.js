@@ -64,6 +64,14 @@ var HotModule = (function () {
         this.hooks.preend.add(handler);
         return this;
     };
+    HotModule.prototype.clean = function (types) {
+        var _this = this;
+        types = types || ['accept', 'pre', 'preend', 'postend'];
+        types.forEach(function (name) {
+            var hook = _this.hooks[name];
+            hook.clean();
+        });
+    };
     HotModule.prototype.postend = function (handler) {
         this.hooks.postend.add(handler);
     };
