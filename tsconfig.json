@@ -4,9 +4,10 @@
   },
   "compilerOptions": {
     "module": "CommonJS",
-    "target": "ES5",
+    "target": "ES6",
+    "declaration": true,
     "noImplicitAny": false,
-    "removeComments": true,
+    "removeComments": false,
     "esModuleInterop":true,
     "preserveConstEnums": true,
     "sourceMap": false,

@@ -8,6 +8,9 @@ import Module from 'module';
 import ListReplacement from './updater/ListReplacement';
 import createHotUpdater from './updater/index';
 
+type Hooks = HotModule['hooks'];
+type HookTypeKeys = keyof Hooks;
+
 export declare class NodeHotModule extends Module {
   hot: HotModule
 }
@@ -88,8 +91,12 @@ class HotReload {
     switch (mode) {
       case 'created':
         if (!require.cache[filename]) {
-          console.log('created:', filename)
+          // console.log('created:', filename)
           require(filename);
+          const m = require.cache[filename] as NodeHotModule;
+          const hot = m.hot as HotModule;
+          this.invokeHook('created', m);
+          this.invokeHook('postend', m, m);
         }
         break;
       default:
@@ -114,11 +121,9 @@ class HotReload {
       // 如果模块已删除，则直接掠过
       return;
     }
-    this.buildDependencies();
     const start = Date.now();
     this.reload(id, {});
     const end = new Date();
-    this.buildDependencies();
     console.log(`Time: ${end.getTime() - start}ms`);
     console.log(`Built at: ${end.toLocaleDateString()} ${end.toLocaleTimeString()}`);
     console.log(`Hot reload successfully`);
@@ -127,49 +132,63 @@ class HotReload {
   /**
    * 重载模块
    */
-  reload(id, reloadeds) {
+  reload(id: string, reloadeds: Record<string, boolean>, stopReason = false) {
     if (reloadeds[id] || !require.cache[id] || require.cache[id] === module) {
       return;
     }
     reloadeds[id] = true;
-    console.log(`Hot reload: ${id} ...`);
     // 获取旧的模块实例
     const old = require.cache[id] as NodeHotModule;
-    const hot = old.hot as HotModule;
     const parent = old.parent;
     try {
       // 执行hooks.pre
-      hot.invokeHook('pre', {}, old);
+      this.invokeHook('pre', old);
       // 执行hooks.preend
-      hot.invokeHook('preend', {}, old);
+      this.invokeHook('preend', old);
       // 将hot对象从旧的模块实例上分离
       delete old.hot;
       // 删除缓存
       delete require.cache[id];
       // 如果文件一删除，则跳过
-      if (!fs.existsSync(id)) return;
-      // 重新载入模块
-      require(id);
-      // 获取当前更新后的模块实例
-      const now = require.cache[id];
-      // 从子依赖中删除掉刚刚引入的模块，防止出现错误的依赖关系
-      const index = module.children.indexOf(now);
-      index > -1 ? module.children.splice(index, 1) : undefined;
+      if (!fs.existsSync(id)) {
+        console.log('Hot remove: ', id);
+        return;
+      }
+      console.log(`Hot reload: ${id}`);
       // 执行hooks.accept
-      const reasons = hot.reasons;
+      const reasons = stopReason ? [] : this.findDependencies(old);
+      if (reasons.length < 1) {
+        // 1.重要： 如果是顶层,才开始重新载入，需要保证模块按照原本顺序重新载入
+        require(id);
+      }
+      // 向上传递更新
       reasons.forEach((reason) => {
         if (reason.hooks.accept.count > 0) {
           // 如果父模块定义了accept 
-          reason.hooks.accept.invoke(now, old);
+          return;
         } else if (require.cache[reason.id] !== require.main && !reason.hasAnyHooks) {
+          // 如果当前父模块已载入过，则本地父模块重新载入不需要reason回溯
+          const stopReason = reloadeds[reason.id];
+          // 确保父模块需要重新载入
+          reloadeds[reason.id] = false;
           // 如果父模块没有定义accept 则重新载入父模块
-          this.reload(reason.id, reloadeds);
-        } else if (require.cache[reason.id] === require.main) {
-          // 如果时主模块,且主模块没有定制accept 这里需要派发至主模块的所有子模块
-          // reason.invokeHook('accept', now, old);
+          this.reload(reason.id, reloadeds, stopReason);
         }
       });
-      hot.invokeHook('postend', {}, now, old);
+      if (!require.cache[id]) {
+        // 2.如果当前模块没有重新载入，则补偿载入
+        require(id);
+      }
+      // 获取当前更新后的模块实例
+      const now = require.cache[id] as NodeHotModule;
+      // 从子依赖中删除掉刚刚引入的模块，防止出现错误的依赖关系
+      const index = module.children.indexOf(now);
+      index > -1 ? module.children.splice(index, 1) : undefined;
+      // 执行父级accept函数
+      reasons.forEach((reason) => {
+        reason.hooks.accept.invoke(now, old);
+      })
+      this.invokeHook('postend', now, old);
       // 还原父依赖
       if (old.parent) {
         now.parent = require.cache[old.parent.id];
@@ -177,7 +196,6 @@ class HotReload {
     } catch (ex) {
       // 如果热更新异常，则需要还原被删除的内容
       const mod = require.cache[id] = (require.cache[id] || old) as NodeHotModule;
-      mod.hot = mod.hot || hot;
       mod.parent = parent;
       // 从子依赖中删除掉刚刚引入的模块，防止出现错误的依赖关系
       const finded = module.children.find((m) => m.filename === id);
@@ -188,46 +206,32 @@ class HotReload {
   }
 
   /**
-   * 改写require,给需要热更的模块添加
+   * 广播注册的热更新消息
    */
-  hotWrap() {
-    const extensions = require.extensions;
-    Object.keys(extensions).forEach((ext) => {
-      const handler = extensions[ext];
-      extensions[ext] = (mod, id, ...others) => {
-        if (!HotModule.isInclude(id)) {
-          return handler(mod, id, ...others);
-        }
-        const anyModule = mod as any;
-        const parent = this.create(mod.parent);
-        const hot = this.create(mod);
-        // 附加 hot对象
-        anyModule.hot = hot;
-        if (module !== mod.parent) {
-          hot.addReason(parent);
-        }
-        // 执行模块初始化
-        handler(mod, id, ...others);
-        // 返回热更新模块的exports
-        return mod.exports;
+  invokeHook<K extends HookTypeKeys>(name: K, ...args: Parameters<Hooks[K]['invoke']>) {
+    this.hotModules.forEach((m) => {
+      const hook = m.hooks[name];
+      if (hook) {
+        return hook.invoke.apply(hook, args);
       }
-    });
+    })
   }
 
   /**
    * 项目启动后，初始化构建热更新模块
    */
-  buildDependencies() {
+  findDependencies(old: NodeHotModule) {
+    const reasons = [] as HotModule[]
     const cache = require.cache;
     Object.keys(cache).map((k) => {
-      const mod = cache[k];
-      if (HotModule.isInclude(k)) {
-        const hotModule = this.create(mod);
-        mod.children.forEach((m) => {
-          this.create(m).addReason(hotModule)
-        });
+      const mod = cache[k] as NodeHotModule;
+      const isDependency = mod.children.indexOf(old) > -1;
+      if (isDependency) {
+        // 如果依赖了当前id模块 >>> reason
+        reasons.push(this.create(mod));
       }
     });
+    return reasons;
   }
 
   /**
@@ -237,7 +241,6 @@ class HotReload {
     options = options || {} as HotOptions;
     this.options = options;
     this.reloadTimeout = options.reloadTimeout || 300;
-    this.hotWrap();
     const cwd = options.cwd || path.resolve('');
     const dirs = cwd instanceof Array ? cwd : [cwd];
     dirs.forEach((item) => this.watch(item))

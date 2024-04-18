@@ -3,23 +3,23 @@
  * @description 更新钩子
  */
 
-export default class Hook {
+export default class Hook<T extends (...params: any[]) => any> {
 
-  private handlers = new Array<Function>();
+  private handlers = new Array<T>();
 
-  get count(){
+  get count() {
     return this.handlers.length;
   }
 
-  add(handler: Function) {
+  add(handler: T) {
     this.handlers.push(handler);
   }
 
-  invoke(...args) {
+  invoke(...args: Parameters<T>) {
     this.handlers.forEach((handler) => handler(...args));
   }
 
-  clean(){
+  clean() {
     this.handlers.length = 0;
   }
 }

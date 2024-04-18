@@ -121,7 +121,7 @@ registrations.push(new Size());
     //When the color.js file changes, you can specify the update replacement in the following ways
     hot
       .createHotUpdater(registrations,newModule,oldModule)
-      .hotNeed((item,oldCtor)=> item instanceof oldCtor)
+      .needHot((item,oldCtor)=> item instanceof oldCtor)
       // set replacement instance constructor
       .creator((ctor)=>{
         return new ctor();
