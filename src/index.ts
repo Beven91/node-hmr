@@ -94,7 +94,6 @@ class HotReload {
           // console.log('created:', filename)
           require(filename);
           const m = require.cache[filename] as NodeHotModule;
-          const hot = m.hot as HotModule;
           this.invokeHook('created', m);
           this.invokeHook('postend', m, m);
         }
