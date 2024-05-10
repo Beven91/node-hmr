@@ -26,7 +26,7 @@ By default, if a module change is detected again, the modified module will be re
 #### Life cycle
 
 ```js
-// preload ---> preend ---> accept ---> postend
+// preload ---> preend ---> accept ---> postend .......---> Alldone
 ```
 
 #### preload

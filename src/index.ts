@@ -24,6 +24,10 @@ export declare class HotOptions {
    * 热更新执行频率，单位：毫秒
    */
   reloadTimeout?: number
+  /**
+   * 排除目录或者文件
+   */
+  exclude?: RegExp
 }
 
 class HotReload {
@@ -116,12 +120,31 @@ class HotReload {
    */
   handleReload(id) {
     id = this.renderId(id);
-    if (!require.cache[id]) {
+    const old = require.cache[id] as NodeHotModule;
+    if (!old) {
       // 如果模块已删除，则直接掠过
       return;
     }
     const start = Date.now();
-    this.reload(id, {});
+    // 检索当前改动模块的所有依赖（无序的，返回的数组顺序不代表依赖顺序)
+    const reasons = this.findAllReasons(old);
+    // 统一清空缓存，用于解决（dependencies无序状态下也能正常按照依赖加载)
+    const dependencies = reasons.map((item) => {
+      const mod = require.cache[item.id] as NodeHotModule;
+      // 执行hooks.pre
+      this.invokeHook('pre', mod);
+      // 执行hooks.preend
+      this.invokeHook('preend', mod);
+      delete require.cache[item.id];
+      return mod;
+    });
+    // 加载依赖
+    dependencies.filter(Boolean).forEach((dependency) => this.tryReload(dependency));
+    const now = require.cache[id] as NodeHotModule;
+    // 执行accept
+    this.invokeHook('accept', now, old);
+    // 执行done
+    this.invokeHook('done', now, old);
     const end = new Date();
     console.log(`Time: ${end.getTime() - start}ms`);
     console.log(`Built at: ${end.toLocaleDateString()} ${end.toLocaleTimeString()}`);
@@ -131,65 +154,27 @@ class HotReload {
   /**
    * 重载模块
    */
-  reload(id: string, reloadeds: Record<string, boolean>, stopReason = false) {
-    if (reloadeds[id] || !require.cache[id] || require.cache[id] === module) {
-      return;
-    }
-    reloadeds[id] = true;
-    // 获取旧的模块实例
-    const old = require.cache[id] as NodeHotModule;
+  tryReload(old: NodeHotModule) {
+    const id = old.id;
     const parent = old.parent;
     try {
-      // 执行hooks.pre
-      this.invokeHook('pre', old);
-      // 执行hooks.preend
-      this.invokeHook('preend', old);
       // 将hot对象从旧的模块实例上分离
       delete old.hot;
-      // 删除缓存
-      delete require.cache[id];
-      // 如果文件一删除，则跳过
-      if (!fs.existsSync(id)) {
-        console.log('Hot remove: ', id);
-        return;
-      }
-      console.log(`Hot reload: ${id}`);
-      // 执行hooks.accept
-      const reasons = stopReason ? [] : this.findDependencies(old);
-      if (reasons.length < 1) {
-        // 1.重要： 如果是顶层,才开始重新载入，需要保证模块按照原本顺序重新载入
+      if (fs.existsSync(id)) {
+        console.log(`Hot reload: ${id}`);
+        // 重新加载
         require(id);
-      }
-      // 向上传递更新
-      reasons.forEach((reason) => {
-        if (reason.hooks.accept.count > 0) {
-          // 如果父模块定义了accept 
-          return;
-        } else if (require.cache[reason.id] !== require.main && !reason.hasAnyHooks) {
-          // 如果当前父模块已载入过，则本地父模块重新载入不需要reason回溯
-          const stopReason = reloadeds[reason.id];
-          // 确保父模块需要重新载入
-          reloadeds[reason.id] = false;
-          // 如果父模块没有定义accept 则重新载入父模块
-          this.reload(reason.id, reloadeds, stopReason);
-        }
-      });
-      if (!require.cache[id]) {
-        // 2.如果当前模块没有重新载入，则补偿载入
-        require(id);
+      } else {
+        console.log(`Hot removed: ${id}`);
       }
       // 获取当前更新后的模块实例
-      const now = require.cache[id] as NodeHotModule;
+      const now = (require.cache[id] || { removed: true }) as NodeHotModule;
       // 从子依赖中删除掉刚刚引入的模块，防止出现错误的依赖关系
       const index = module.children.indexOf(now);
       index > -1 ? module.children.splice(index, 1) : undefined;
-      // 执行父级accept函数
-      reasons.forEach((reason) => {
-        reason.hooks.accept.invoke(now, old);
-      })
       this.invokeHook('postend', now, old);
       // 还原父依赖
-      if (old.parent) {
+      if (old.parent && now) {
         now.parent = require.cache[old.parent.id];
       }
     } catch (ex) {
@@ -219,18 +204,35 @@ class HotReload {
   /**
    * 项目启动后，初始化构建热更新模块
    */
-  findDependencies(old: NodeHotModule) {
-    const reasons = [] as HotModule[]
+  findAllReasons(old: NodeHotModule) {
+    const isRemoved = !fs.existsSync(old.id);
+    const topReasons = [this.create(old)];
+    if (isRemoved) {
+      return topReasons;
+    }
     const cache = require.cache;
-    Object.keys(cache).map((k) => {
-      const mod = cache[k] as NodeHotModule;
-      const isDependency = mod.children.indexOf(old) > -1;
-      if (isDependency) {
-        // 如果依赖了当前id模块 >>> reason
-        reasons.push(this.create(mod));
-      }
-    });
-    return reasons;
+    const exclude = this.options.exclude;
+    const forMappings = {};
+    const allMappings = {};
+    const tryAcceptKeys = Object.keys(cache).filter((k) => !exclude.test(k));
+    const findDependencies = (source: NodeHotModule) => {
+      const reasons: HotModule[] = [];
+      if (forMappings[source.id]) return [];
+      forMappings[source.id] = true;
+      tryAcceptKeys.forEach((key) => {
+        const mod = cache[key] as NodeHotModule;
+        const isAccepted = mod.hot?.accept?.length > 0;
+        const isSelf = mod == old;
+        if (allMappings[key] || isSelf || isAccepted) return;
+        if (mod.children.indexOf(source) > -1) {
+          allMappings[key] = true;
+          reasons.push(this.create(mod));
+          reasons.push(...findDependencies(mod));
+        }
+      });
+      return reasons;
+    }
+    return topReasons.concat(findDependencies(old));
   }
 
   /**
@@ -239,6 +241,7 @@ class HotReload {
   run(options?: HotOptions) {
     options = options || {} as HotOptions;
     this.options = options;
+    this.options.exclude = this.options.exclude || /node_modules/i;
     this.reloadTimeout = options.reloadTimeout || 300;
     const cwd = options.cwd || path.resolve('');
     const dirs = cwd instanceof Array ? cwd : [cwd];

@@ -7,6 +7,8 @@ import Hook from './Hook';
 
 export type HookTypes = 'accept' | 'pre' | 'preend' | 'created' | 'postend'
 
+export type OnChangedHandler = (now: NodeHotModule, old: NodeHotModule) => void
+
 export default class HotModule {
 
   /**
@@ -16,7 +18,7 @@ export default class HotModule {
     /**
   * 在更新后执行
   */
-    accept: new Hook<(current: NodeHotModule, oldModule: NodeHotModule) => void>(),
+    accept: new Hook<OnChangedHandler>(),
     /**
      * 在执行accept前执行
      */
@@ -28,12 +30,17 @@ export default class HotModule {
     /**
      * 再热更新完毕后
      */
-    postend: new Hook<(current: NodeHotModule, oldModule: NodeHotModule) => void>(),
+    postend: new Hook<OnChangedHandler>(),
 
     /**
      * 新增文件后触发
      */
-    created: new Hook<(current: NodeHotModule) => void>()
+    created: new Hook<(current: NodeHotModule) => void>(),
+
+    /**
+     * 热更新结束
+     */
+    done: new Hook<OnChangedHandler>(),
   }
 
 
@@ -70,7 +77,7 @@ export default class HotModule {
   /**
    * 判断当前执行，是否是从热更新触发
    */
-  accept(handler: (now, old) => void) {
+  accept(handler: OnChangedHandler) {
     this.hooks.accept.add(handler);
     return this;
   }
@@ -78,7 +85,7 @@ export default class HotModule {
   /**
    * 监听预更新，在热更新前执行
    */
-  preload(handler: (old) => void) {
+  preload(handler: (old: NodeHotModule) => void) {
     this.hooks.pre.add(handler);
     return this;
   }
@@ -86,12 +93,12 @@ export default class HotModule {
   /**
    * 在pre钩子执行后执行
    */
-  preend(handler: (old) => void) {
+  preend(handler: (old: NodeHotModule) => void) {
     this.hooks.preend.add(handler);
     return this;
   }
 
-  created(handler: (m) => void) {
+  created(handler: (m: NodeHotModule) => void) {
     this.hooks.created.add(handler);
     return this;
   }
@@ -113,7 +120,13 @@ export default class HotModule {
    * 热更新完毕
    * @param params 
    */
-  postend(handler: (now, old) => void) {
+  postend(handler: OnChangedHandler) {
     this.hooks.postend.add(handler);
+    return this;
+  }
+
+  allDone(handler: OnChangedHandler) {
+    this.hooks.done.add(handler);
+    return this;
   }
 }
