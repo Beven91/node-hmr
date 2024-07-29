@@ -81,7 +81,7 @@ class HotReload {
       return;
     }
     const runtime = {}
-    fs.watch(cwd, { recursive: true }, (type, filename) => {
+    return fs.watch(cwd, { recursive: true }, (type, filename) => {
       if (!/node_module/.test(filename) && /\.(ts|js)$/.test(filename)) {
         const id = path.join(cwd, filename).replace(/^[A-Z]:/, (a) => a.toUpperCase());
         clearTimeout(runtime[type]);
@@ -245,7 +245,14 @@ class HotReload {
     this.reloadTimeout = options.reloadTimeout || 300;
     const cwd = options.cwd || path.resolve('');
     const dirs = cwd instanceof Array ? cwd : [cwd];
-    dirs.forEach((item) => this.watch(item))
+    const watchers = dirs.map((item) => this.watch(item));
+    return {
+      options,
+      dirs,
+      close() {
+        watchers.forEach((watcher) => watcher?.close?.());
+      }
+    }
   }
 }
 
