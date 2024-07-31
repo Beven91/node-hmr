@@ -56,6 +56,8 @@ class HotReload {
    */
   private reloadTimeout: number
 
+  private isHotUpdating = false
+
   constructor() {
     this.hotModules = new Map<string, HotModule>();
   }
@@ -91,6 +93,7 @@ class HotReload {
   }
 
   hotWatch(type, filename) {
+    this.isHotUpdating = true;
     const mode = type === 'rename' ? fs.existsSync(filename) ? 'created' : 'remove' : type;
     switch (mode) {
       case 'created':
@@ -105,6 +108,7 @@ class HotReload {
       default:
         this.handleReload(filename);
     }
+    this.isHotUpdating = false;
   }
 
   renderId(id) {
@@ -177,6 +181,7 @@ class HotReload {
       if (old.parent && now) {
         now.parent = require.cache[old.parent.id];
       }
+      return true;
     } catch (ex) {
       // 如果热更新异常，则需要还原被删除的内容
       const mod = require.cache[id] = (require.cache[id] || old) as NodeHotModule;
@@ -186,6 +191,7 @@ class HotReload {
       const index = module.children.indexOf(finded)
       index > -1 ? module.children.splice(index, 1) : undefined;
       console.error('Hot reload error', ex.stack);
+      return false;
     }
   }
 
@@ -246,10 +252,20 @@ class HotReload {
     const cwd = options.cwd || path.resolve('');
     const dirs = cwd instanceof Array ? cwd : [cwd];
     const watchers = dirs.map((item) => this.watch(item));
+    const handleException = (e) => {
+      console.error(e);
+      if(this.isHotUpdating) {
+        this.isHotUpdating = false;
+        return;
+      }
+      throw e;
+    }
+    process.on('uncaughtException', handleException)
     return {
       options,
       dirs,
       close() {
+        process.off('uncaughtException', handleException);
         watchers.forEach((watcher) => watcher?.close?.());
       }
     }
