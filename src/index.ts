@@ -227,7 +227,7 @@ class HotReload {
       forMappings[source.id] = true;
       tryAcceptKeys.forEach((key) => {
         const mod = cache[key] as NodeHotModule;
-        const isAccepted = mod.hot?.accept?.length > 0;
+        const isAccepted = mod.hot?.hooks.accept?.count > 0;
         const isSelf = mod == old;
         if (allMappings[key] || isSelf || isAccepted) return;
         if (mod.children.indexOf(source) > -1) {
